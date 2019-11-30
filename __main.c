@@ -17,15 +17,26 @@
 #define MAX_STR_LENGTH 200
 #define TEST_PATH "in/test1.txt"
 
+struct pair {
+    int first;
+    int second;
+};
+
+void ltrim(char *str, const char *seps);
+void rtrim(char *str, const char *seps);
+void trim(char *str, const char *seps);
 int checkInput(int argc);
 int checkFiles(FILE *files[], int n);
+int getInputInt(FILE *f, char *buffer, int *x);
 int getWithCheckString(char *str, FILE *f, char *buffer);
-int getInput(int maze[], int n, char *str);
+int insertPair(char *str, char value, char *maze, int n);
+int getPair(char *str, struct pair *p);
+int insertInMaze(char *maze, int n, struct pair *p, char value);
 
 int main(int argc, char *argv[])
 {
-    if (checkInput(argc) != 0)
-        return -1;
+    /*if (checkInput(argc) != 0)
+        return -1;*/
 
     //Abrimos los archivos correspondientes
     //char *PATH_IN = argv[1];
@@ -47,25 +58,79 @@ int main(int argc, char *argv[])
         return -1;
 
     int dimension = 0;
-    if (fgets(line, MAX_STR_LENGTH - 1, fIn) != NULL)
-    {
-        trim(line, NULL);
-        sscanf(line, "%d", &dimension);
-    }
-
+    if(getInputInt(fIn, line, &dimension) != 0)
+		return -1;
+		
     if (getWithCheckString("obstaculos fijos", fIn, line) == -1)
         return -1;
 
-    int maze[dimension][dimension];
+    char maze[dimension][dimension];
     for (int i = 0; i < dimension; i++)
         for (int j = 0; j < dimension; j++)
-            maze[i][j] = 0;
+            maze[i][j] = '0';
 
     int flag = 0;
-    while (fgets(line, MAX_STR_LENGTH - 1, fIn) != NULL && flag == 0)
+    while (flag == 0)
     {
-        flag = getInput(maze, dimension, line);
+		if(fgets(line, MAX_STR_LENGTH - 1, fIn) != NULL ){
+			trim(line, NULL);
+			if (strcmp(line, "obstaculos aleatorios") != 0){
+				flag = insertPair(line, '1', maze, dimension);
+				if(flag == -1){
+					printf("Error, coordenadas invalidas.");
+				}			
+			}else{
+				flag = 1;
+			}
+		}
     }
+    
+    
+    if(flag != 1)
+		return 0;
+		
+	int nRandoms = 0;
+	
+    if(getInputInt(fIn, line, &nRandoms) != 0)
+		return -1;
+		
+	struct pair p;
+	printf("%d\n", nRandoms);
+	while(nRandoms > 1){
+		p.first = rand() % dimension +1 ;
+		p.second = rand() % dimension + 1;
+		printf("%d\t%d\n", p.first, p.second);
+		if(insertInMaze(&maze, dimension, &p, '1') == 0)
+			nRandoms--;
+	}
+	
+	printf("%d\n", nRandoms);
+		
+    if (getWithCheckString("posicion inicial", fIn, line) == -1)
+        return -1;
+        
+    fgets(line, MAX_STR_LENGTH - 1, fIn);
+     	
+	if(insertPair(line, 'I', &maze, dimension) == -1){
+		printf("Error, coordenadas invalidas.");
+	}	
+	
+	if (getWithCheckString("objetivo", fIn, line) == -1)
+        return -1;
+    
+    fgets(line, MAX_STR_LENGTH - 1, fIn);
+
+	if(insertPair(line, 'X', &maze, dimension) == -1){
+		printf("Error, coordenadas invalidas.");
+	}		
+		
+    for (int i = 0; i < dimension; i++){
+        for (int j = 0; j < dimension; j++){
+            printf("%c ", maze[i][j]);
+        }
+        printf("\n");
+    }
+    return 0;
 }
 
 /************************ STRING UTILITIES ****************************/
@@ -155,12 +220,20 @@ int checkInput(int argc)
     return 0;
 }
 
+int getInputInt(FILE *f, char *buffer, int *x){
+	if (fgets(buffer, MAX_STR_LENGTH - 1, f) == NULL)
+		return -1;
+	trim(buffer, NULL);
+	sscanf(buffer, "%d", x);
+	return 0;
+}
+
 int getWithCheckString(char *str, FILE *f, char *buffer)
 {
     if (fgets(buffer, MAX_STR_LENGTH - 1, f) != NULL)
     {
         trim(buffer, NULL);
-        if (buffer != str)
+        if (strcmp(buffer,str) != 0)
         {
             printf("Error en el formato de entrada");
             return -1;
@@ -169,7 +242,14 @@ int getWithCheckString(char *str, FILE *f, char *buffer)
     return 0;
 }
 
-int getInput(int maze[], int n, char *str)
+int insertPair(char *str, char value, char *maze, int n){
+	struct pair p;
+	if(getPair(str, &p) == -1)
+		return -1;
+	return  insertInMaze(maze, n, &p, value);
+}
+
+int getPair(char *str, struct pair *p)
 {
     trim(str, "()\t\n\v\f\r "); // quita espacios y parentesis del inicio y fin de la string
     int i = 0;
@@ -187,4 +267,24 @@ int getInput(int maze[], int n, char *str)
     }
     if (countCommas != 1)
         return -1;
+    sscanf(str, "%d", &p->first);
+    sscanf((str + newLine), "%d", &p->second);
+    return 0;
+}
+
+int insertInMaze(char *maze, int n, struct pair *p, char value)
+{
+	int y = p->first -1;
+	int x = p->second -1;
+	
+	if(x > (n-1) || x < 0 || y > (n-1) || y < 0){
+		return -1;
+	}
+	
+	if(*(maze + (x*n+y)) != '0'){
+		return -1;
+	}
+	
+	*(maze + (x*n+y)) = value;
+	return 0;
 }

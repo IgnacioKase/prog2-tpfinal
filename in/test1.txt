@@ -1,0 +1,12 @@
+dimension
+10
+obstaculos fijos
+(4,3)
+(2,1)
+(3,2)
+obstaculos aleatorios
+5
+posicion inicial
+(1,1)
+objetivo
+(5,4)
