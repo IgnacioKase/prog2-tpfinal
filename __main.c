@@ -96,11 +96,13 @@ int main(int argc, char *argv[])
 		
 	struct pair p;
 	printf("%d\n", nRandoms);
-	while(nRandoms > 1){
-		p.first = rand() % dimension +1 ;
+	while(nRandoms > 0){
+		p.first = rand() % dimension + 1;
 		p.second = rand() % dimension + 1;
 		printf("%d\t%d\n", p.first, p.second);
-		if(insertInMaze(&maze, dimension, &p, '1') == 0)
+		flag = insertInMaze(&maze, dimension, &p, '1');
+		printf("%d %d\n", flag, nRandoms);
+		if(flag == 0)
 			nRandoms--;
 	}
 	
