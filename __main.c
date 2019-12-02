@@ -13,11 +13,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #define MAX_STR_LENGTH 200
-#define TEST_PATH "in/test1.txt"
 
-struct pair {
+struct pair
+{
     int first;
     int second;
 };
@@ -32,19 +33,21 @@ int getWithCheckString(char *str, FILE *f, char *buffer);
 int insertPair(char *str, char value, char *maze, int n);
 int getPair(char *str, struct pair *p);
 int insertInMaze(char *maze, int n, struct pair *p, char value);
+void generateRandoms(char *maze, int n, int r);
+void printMaze(char *maze, const int n);
+int getWalls(FILE *f, char *buffer, char *maze, const int n);
 
 int main(int argc, char *argv[])
 {
-    /*if (checkInput(argc) != 0)
-        return -1;*/
+    //Checkeamos los argumentos
+    if (checkInput(argc) != 0)
+        return -1;
+    char *PATH_IN = argv[1];
 
-    //Abrimos los archivos correspondientes
-    //char *PATH_IN = argv[1];
-    char *PATH_IN = TEST_PATH;
-
+    //Abrimos el archivo
     FILE *fIn = fopen(PATH_IN, "r");
 
-    //Si no se puede abrir algún archivo, cortamos la ejecución
+    //Si no se puede abrir el archivo, cortamos la ejecución
     if (fIn == NULL)
     {
         printf("Error al abrir el archivo");
@@ -52,86 +55,77 @@ int main(int argc, char *argv[])
     }
     ///////////////////////////////////////////////////
 
+    //Variables a utilizar
     char line[MAX_STR_LENGTH]; //buffer para lecutura
+    int dimension = 0;
+    int nRandoms = 0;
+    char *maze; // será utilizada como matriz de dos dimensiones
+                // pero para pasar (maze) como argumento a funciones,
+                // lo declaramos como un puntero
+    ///////////////////////////////////////////////////
 
+    // Lee dimension
     if (getWithCheckString("dimension", fIn, line) == -1)
         return -1;
-
-    int dimension = 0;
-    if(getInputInt(fIn, line, &dimension) != 0)
-		return -1;
-		
-    if (getWithCheckString("obstaculos fijos", fIn, line) == -1)
+    if (getInputInt(fIn, line, &dimension) != 0)
         return -1;
+    ///////////////////////////////////////////////////
 
-    char maze[dimension][dimension];
+    // Inicializamos la matriz para el laberinto
+    maze = (char *)malloc(dimension * dimension * sizeof(char));
+    if (maze == NULL)
+    {
+        printf("Memoria insuficiente para este laberinto.\n");
+        return -1;
+    }
     for (int i = 0; i < dimension; i++)
         for (int j = 0; j < dimension; j++)
-            maze[i][j] = '0';
+            *(maze + (i * dimension + j)) = '0';
+    ///////////////////////////////////////////////////
 
-    int flag = 0;
-    while (flag == 0)
-    {
-		if(fgets(line, MAX_STR_LENGTH - 1, fIn) != NULL ){
-			trim(line, NULL);
-			if (strcmp(line, "obstaculos aleatorios") != 0){
-				flag = insertPair(line, '1', maze, dimension);
-				if(flag == -1){
-					printf("Error, coordenadas invalidas.");
-				}			
-			}else{
-				flag = 1;
-			}
-		}
-    }
-    
-    
-    if(flag != 1)
-		return 0;
-		
-	int nRandoms = 0;
-	
-    if(getInputInt(fIn, line, &nRandoms) != 0)
-		return -1;
-		
-	struct pair p;
-	printf("%d\n", nRandoms);
-	while(nRandoms > 0){
-		p.first = rand() % dimension + 1;
-		p.second = rand() % dimension + 1;
-		printf("%d\t%d\n", p.first, p.second);
-		flag = insertInMaze(&maze, dimension, &p, '1');
-		printf("%d %d\n", flag, nRandoms);
-		if(flag == 0)
-			nRandoms--;
-	}
-	
-	printf("%d\n", nRandoms);
-		
+    // Lee obstaculos fijos
+    if (getWithCheckString("obstaculos fijos", fIn, line) == -1)
+        return -1;
+    if (getWalls(fIn, line, maze, dimension) != 1)
+        return -1;
+    ///////////////////////////////////////////////////
+
+    // Lee cantidad de obstaculos aleatorios
+    if (getInputInt(fIn, line, &nRandoms) != 0)
+        return -1;
+    ///////////////////////////////////////////////////
+
+    // Lee posicion inicial y la inserta en la matriz
     if (getWithCheckString("posicion inicial", fIn, line) == -1)
         return -1;
-        
     fgets(line, MAX_STR_LENGTH - 1, fIn);
-     	
-	if(insertPair(line, 'I', &maze, dimension) == -1){
-		printf("Error, coordenadas invalidas.");
-	}	
-	
-	if (getWithCheckString("objetivo", fIn, line) == -1)
+    if (insertPair(line, 'I', maze, dimension) == -1)
+    {
+        printf("Error, coordenadas invalidas.\n");
         return -1;
-    
-    fgets(line, MAX_STR_LENGTH - 1, fIn);
-
-	if(insertPair(line, 'X', &maze, dimension) == -1){
-		printf("Error, coordenadas invalidas.");
-	}		
-		
-    for (int i = 0; i < dimension; i++){
-        for (int j = 0; j < dimension; j++){
-            printf("%c ", maze[i][j]);
-        }
-        printf("\n");
     }
+
+    ///////////////////////////////////////////////////
+
+    // Lee posicion final en la matriz
+    if (getWithCheckString("objetivo", fIn, line) == -1)
+        return -1;
+    fgets(line, MAX_STR_LENGTH - 1, fIn);
+    if (insertPair(line, 'X', maze, dimension) == -1)
+    {
+        printf("Error, coordenadas invalidas.\n");
+        return -1;
+    }
+    ///////////////////////////////////////////////////
+
+    //Genera los obstaculos aleatorios
+    generateRandoms(maze, dimension, nRandoms);
+
+    //Imprime el laberinto
+    printMaze(maze, dimension);
+
+    free(maze);
+    fclose(fIn);
     return 0;
 }
 
@@ -206,28 +200,27 @@ void trim(char *str, const char *seps)
 int checkInput(int argc)
 {
     //Checkeamos recibir los parametros correctamente
-    if (argc != 4)
+    if (argc != 2)
     {
         printf("---------------------------------------\n\n");
-        printf("Error, ingrese el path de los archivos:\n\n");
-        printf("1 - Archivo de ciudades\n");
-        printf("2 - Archivo de personas\n");
-        printf("3 - Archivo de salida\n\n");
+        printf("Error, ingrese el path del archivo:\n\n");
+        printf("1 - Archivo de entrada\n\n");
         printf("Ejemplo:\n\n");
         printf("$ gcc __main.c\n");
-        printf("$ fileName db/codigoLocalidades.txt db/personas.txt out/out.txt\n\n");
+        printf("$ fileName in/test1.txt\n\n");
         printf("---------------------------------------\n");
         return -1;
     }
     return 0;
 }
 
-int getInputInt(FILE *f, char *buffer, int *x){
-	if (fgets(buffer, MAX_STR_LENGTH - 1, f) == NULL)
-		return -1;
-	trim(buffer, NULL);
-	sscanf(buffer, "%d", x);
-	return 0;
+int getInputInt(FILE *f, char *buffer, int *x)
+{
+    if (fgets(buffer, MAX_STR_LENGTH - 1, f) == NULL)
+        return -1;
+    trim(buffer, NULL);
+    sscanf(buffer, "%d", x);
+    return 0;
 }
 
 int getWithCheckString(char *str, FILE *f, char *buffer)
@@ -235,7 +228,7 @@ int getWithCheckString(char *str, FILE *f, char *buffer)
     if (fgets(buffer, MAX_STR_LENGTH - 1, f) != NULL)
     {
         trim(buffer, NULL);
-        if (strcmp(buffer,str) != 0)
+        if (strcmp(buffer, str) != 0)
         {
             printf("Error en el formato de entrada");
             return -1;
@@ -244,11 +237,12 @@ int getWithCheckString(char *str, FILE *f, char *buffer)
     return 0;
 }
 
-int insertPair(char *str, char value, char *maze, int n){
-	struct pair p;
-	if(getPair(str, &p) == -1)
-		return -1;
-	return  insertInMaze(maze, n, &p, value);
+int insertPair(char *str, char value, char *maze, int n)
+{
+    struct pair p;
+    if (getPair(str, &p) == -1)
+        return -1;
+    return insertInMaze(maze, n, &p, value);
 }
 
 int getPair(char *str, struct pair *p)
@@ -276,17 +270,61 @@ int getPair(char *str, struct pair *p)
 
 int insertInMaze(char *maze, int n, struct pair *p, char value)
 {
-	int y = p->first -1;
-	int x = p->second -1;
-	
-	if(x > (n-1) || x < 0 || y > (n-1) || y < 0){
-		return -1;
-	}
-	
-	if(*(maze + (x*n+y)) != '0'){
-		return -1;
-	}
-	
-	*(maze + (x*n+y)) = value;
-	return 0;
+    int y = p->first - 1;
+    int x = p->second - 1;
+
+    if (x > (n - 1) || x < 0 || y > (n - 1) || y < 0)
+        return -1;
+
+    if (*(maze + (x * n + y)) != '0')
+        return -1;
+
+    *(maze + (x * n + y)) = value;
+    return 0;
+}
+
+int getWalls(FILE *f, char *buffer, char *maze, const int n)
+{
+    int flag = 0;
+    while (flag == 0)
+    {
+        if (fgets(buffer, MAX_STR_LENGTH - 1, f) != NULL)
+        {
+            trim(buffer, NULL);
+            if (strcmp(buffer, "obstaculos aleatorios") != 0)
+            {
+                flag = insertPair(buffer, '1', maze, n);
+                if (flag == -1)
+                    printf("Error, coordenadas invalidas.");
+            }
+            else
+            {
+                flag = 1;
+            }
+        }
+    }
+    return flag;
+}
+
+void generateRandoms(char *maze, const int n, int r)
+{
+    srand(time(0));
+    struct pair p;
+    while (r > 0)
+    {
+        p.first = rand() % n + 1;
+        p.second = rand() % n + 1;
+        if (insertInMaze(maze, n, &p, '1') == 0)
+            r--;
+    }
+}
+
+void printMaze(char *maze, const int n)
+{
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = 0; j < n; j++)
+            printf("%c ", *(maze + (i * n + j)));
+        printf("\n");
+    }
 }
