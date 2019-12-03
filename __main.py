@@ -43,6 +43,7 @@ def bfs(graph, vertex, end):
 
 def __main(args, kargs):
     response = subprocess.check_output(["./a.exe", "in/test1.txt"])
+    print(response)
 
     maze = '''I 1 0 0 0 0 0
     0 0 1 0 0 0 0
