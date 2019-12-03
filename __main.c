@@ -1,13 +1,13 @@
 /*
- TRABAJO PRÁCTICO N° 2
- GENERACIÓN/LECTURA DE ARCHIVOS - C
+ TRABAJO PRÁCTICO FINAL
+ GENERACION/SOLUCION Laberinto C/Python
 
  INTEGRANTES:
        - KASEVICH, IGNACIO
 
- GIT: https://github.com/IgnacioKase/prog2-tp2
+ GIT: https://github.com/IgnacioKase/prog2-tpfinal
 
- 17/11/2019
+ 28/11/2019
 */
 
 #include <stdio.h>
@@ -17,6 +17,10 @@
 
 #define MAX_STR_LENGTH 200
 
+/*
+    Estructura utilizada para representar
+    una coordenada en el laberinto
+*/
 struct pair
 {
     int first;
@@ -27,15 +31,15 @@ void ltrim(char *str, const char *seps);
 void rtrim(char *str, const char *seps);
 void trim(char *str, const char *seps);
 int checkInput(int argc);
-int checkFiles(FILE *files[], int n);
-int getInputInt(FILE *f, char *buffer, int *x);
-int getWithCheckString(char *str, FILE *f, char *buffer);
-int insertPair(char *str, char value, char *maze, int n);
+int getInt(FILE *f, int *x);
+int checkLine(FILE *f, char *str);
+int getWalls(FILE *f, char *maze, const int n);
+int getObjectives(FILE *f, char *maze, const int dimension);
 int getPair(char *str, struct pair *p);
 int insertInMaze(char *maze, int n, struct pair *p, char value);
-void generateRandoms(char *maze, int n, int r);
+int insertPair(char *str, char value, char *maze, int n);
+void generateRandoms(char *maze, const int n, int r);
 void printMaze(char *maze, const int n);
-int getWalls(FILE *f, char *buffer, char *maze, const int n);
 
 int main(int argc, char *argv[])
 {
@@ -56,7 +60,6 @@ int main(int argc, char *argv[])
     ///////////////////////////////////////////////////
 
     //Variables a utilizar
-    char line[MAX_STR_LENGTH]; //buffer para lecutura
     int dimension = 0;
     int nRandoms = 0;
     char *maze; // será utilizada como matriz de dos dimensiones
@@ -64,12 +67,9 @@ int main(int argc, char *argv[])
                 // lo declaramos como un puntero
     ///////////////////////////////////////////////////
 
-    // Lee dimension
-    if (getWithCheckString("dimension", fIn, line) == -1)
+    //Lee la dimensión del laberinto
+    if (checkLine(fIn, "dimension") != 0 || getInt(fIn, &dimension) != 0)
         return -1;
-    if (getInputInt(fIn, line, &dimension) != 0)
-        return -1;
-    ///////////////////////////////////////////////////
 
     // Inicializamos la matriz para el laberinto
     maze = (char *)malloc(dimension * dimension * sizeof(char));
@@ -83,40 +83,20 @@ int main(int argc, char *argv[])
             *(maze + (i * dimension + j)) = '0';
     ///////////////////////////////////////////////////
 
-    // Lee obstaculos fijos
-    if (getWithCheckString("obstaculos fijos", fIn, line) == -1)
+    //Lee el archivo y genera la primer parte del laberito
+    if (checkLine(fIn, "obstaculos fijos") == -1)
         return -1;
-    if (getWalls(fIn, line, maze, dimension) != 1)
+    if (getWalls(fIn, maze, dimension) != 1)
         return -1;
     ///////////////////////////////////////////////////
 
     // Lee cantidad de obstaculos aleatorios
-    if (getInputInt(fIn, line, &nRandoms) != 0)
+    if (getInt(fIn, &nRandoms) != 0)
         return -1;
     ///////////////////////////////////////////////////
 
-    // Lee posicion inicial y la inserta en la matriz
-    if (getWithCheckString("posicion inicial", fIn, line) == -1)
-        return -1;
-    fgets(line, MAX_STR_LENGTH - 1, fIn);
-    if (insertPair(line, 'I', maze, dimension) == -1)
-    {
-        printf("Error, coordenadas invalidas.\n");
-        return -1;
-    }
-
-    ///////////////////////////////////////////////////
-
-    // Lee posicion final en la matriz
-    if (getWithCheckString("objetivo", fIn, line) == -1)
-        return -1;
-    fgets(line, MAX_STR_LENGTH - 1, fIn);
-    if (insertPair(line, 'X', maze, dimension) == -1)
-    {
-        printf("Error, coordenadas invalidas.\n");
-        return -1;
-    }
-    ///////////////////////////////////////////////////
+    //Lee y escribe los objetivos de entrada y salida del laberinto
+    getObjectives(fIn, maze, dimension);
 
     //Genera los obstaculos aleatorios
     generateRandoms(maze, dimension, nRandoms);
@@ -195,8 +175,15 @@ void trim(char *str, const char *seps)
     ltrim(str, seps);
 }
 
-/************************* AUX. FUNCTIONS *****************************/
+/*********************** FILE AUX. FUNCTIONS **************************/
 
+/*
+    Checkea que la cantidad de parametros
+    recibidos en el main sea la correcta,
+    en caso de error muestra un mensaje.
+    Retorna 0 en caso de terminar correctamente,
+    -1 en caso contrario.
+*/
 int checkInput(int argc)
 {
     //Checkeamos recibir los parametros correctamente
@@ -214,8 +201,16 @@ int checkInput(int argc)
     return 0;
 }
 
-int getInputInt(FILE *f, char *buffer, int *x)
+/*
+    Lee la siguiente linea de un archivo
+    y guarda el valor leido en un entero (se pasa el puntero).
+    Retorna 0 en caso de terminar correctamente,
+    -1 en caso contrario.
+*/
+int getInt(FILE *f, int *x)
 {
+    char buffer[MAX_STR_LENGTH]; //buffer para lecutura
+
     if (fgets(buffer, MAX_STR_LENGTH - 1, f) == NULL)
         return -1;
     trim(buffer, NULL);
@@ -223,8 +218,17 @@ int getInputInt(FILE *f, char *buffer, int *x)
     return 0;
 }
 
-int getWithCheckString(char *str, FILE *f, char *buffer)
+/*
+    Lee la siguiente linea de un archivo
+    y compara la linea leida con una string
+    @str.
+    Retorna 0 en caso de ser iguales,
+    -1 en caso contrario.
+*/
+int checkLine(FILE *f, char *str)
 {
+    char buffer[MAX_STR_LENGTH]; //buffer para lecutura
+
     if (fgets(buffer, MAX_STR_LENGTH - 1, f) != NULL)
     {
         trim(buffer, NULL);
@@ -234,17 +238,91 @@ int getWithCheckString(char *str, FILE *f, char *buffer)
             return -1;
         }
     }
+    else
+        return -1;
     return 0;
 }
 
-int insertPair(char *str, char value, char *maze, int n)
+/*
+    Lee los obstaculos fijos del archivo
+    y los inserta en la matriz @maze,
+    checkeando que las coordenadas sean válidas.
+    Retorna 0 en caso de terminar correctamente,
+    -1 en caso contrario.
+*/
+int getWalls(FILE *f, char *maze, const int n)
 {
-    struct pair p;
-    if (getPair(str, &p) == -1)
-        return -1;
-    return insertInMaze(maze, n, &p, value);
+    char buffer[MAX_STR_LENGTH]; //buffer para lecutura
+
+    int flag = 0;
+    while (flag == 0)
+    {
+        if (fgets(buffer, MAX_STR_LENGTH - 1, f) != NULL)
+        {
+            trim(buffer, NULL);
+            if (strcmp(buffer, "obstaculos aleatorios") != 0)
+            {
+                flag = insertPair(buffer, '1', maze, n);
+                if (flag == -1)
+                    printf("Error, coordenadas invalidas.");
+            }
+            else
+            {
+                flag = 1;
+            }
+        }
+    }
+    return flag;
 }
 
+/*
+    Lee los objetivos del archivo
+    y los inserta en la matriz @maze,
+    checkeando que las coordenadas sean válidas.
+    Retorna 0 en caso de terminar correctamente,
+    -1 en caso contrario.
+*/
+int getObjectives(FILE *f, char *maze, const int dimension)
+{
+    char buffer[MAX_STR_LENGTH]; //buffer para lecutura
+
+    // Lee posicion inicial y la inserta en la matriz
+    if (checkLine(f, "posicion inicial") == -1)
+        return -1;
+    fgets(buffer, MAX_STR_LENGTH - 1, f);
+    if (insertPair(buffer, 'I', maze, dimension) == -1)
+    {
+        printf("Error, coordenadas invalidas.\n");
+        return -1;
+    }
+
+    ///////////////////////////////////////////////////
+
+    // Lee posicion final en la matriz
+    if (checkLine(f, "objetivo") == -1)
+        return -1;
+    fgets(buffer, MAX_STR_LENGTH - 1, f);
+    if (insertPair(buffer, 'X', maze, dimension) == -1)
+    {
+        printf("Error, coordenadas invalidas.\n");
+        return -1;
+    }
+    ///////////////////////////////////////////////////
+    return 0;
+}
+
+/************************* AUX. FUNCTIONS *****************************/
+
+/*
+    Recibe una string @str de la forma: 
+        (x[int], y[int])
+    Lee los enteros de la string y los escribe
+    en una estructura pair (se pasa el puntero).
+    p.first = x
+    p.second = y
+    Retorna 0 en caso de terminar correctamente,
+    -1 en caso contrario.
+*/
 int getPair(char *str, struct pair *p)
 {
     trim(str, "()\t\n\v\f\r "); // quita espacios y parentesis del inicio y fin de la string
@@ -268,6 +346,14 @@ int getPair(char *str, struct pair *p)
     return 0;
 }
 
+/*
+    Inserta el caracter @value en la posicion indicada
+    por la estructura pair @p en el laberinto @maze.
+    (A las coordenadas se les resta 1).
+    Checkeando que las coordenadas sean válidas.
+    Retorna 0 en caso de terminar correctamente,
+    -1 en caso contrario.
+*/
 int insertInMaze(char *maze, int n, struct pair *p, char value)
 {
     int y = p->first - 1;
@@ -283,29 +369,26 @@ int insertInMaze(char *maze, int n, struct pair *p, char value)
     return 0;
 }
 
-int getWalls(FILE *f, char *buffer, char *maze, const int n)
+/*
+    Recibe una string con coordenadas @str, un valor @value,
+    el laberinto @maze y la dimensión del mismo @n
+    e inserta el valor @value en las coordenadas que indique @str
+    en @maze.
+    Retorna 0 en caso de terminar correctamente,
+    -1 en caso contrario.
+*/
+int insertPair(char *str, char value, char *maze, int n)
 {
-    int flag = 0;
-    while (flag == 0)
-    {
-        if (fgets(buffer, MAX_STR_LENGTH - 1, f) != NULL)
-        {
-            trim(buffer, NULL);
-            if (strcmp(buffer, "obstaculos aleatorios") != 0)
-            {
-                flag = insertPair(buffer, '1', maze, n);
-                if (flag == -1)
-                    printf("Error, coordenadas invalidas.");
-            }
-            else
-            {
-                flag = 1;
-            }
-        }
-    }
-    return flag;
+    struct pair p;
+    if (getPair(str, &p) == -1)
+        return -1;
+    return insertInMaze(maze, n, &p, value);
 }
 
+/*
+    Genera @r obstaculos aleatorios 
+    en el laberinto @maze.
+*/
 void generateRandoms(char *maze, const int n, int r)
 {
     srand(time(0));
@@ -319,6 +402,10 @@ void generateRandoms(char *maze, const int n, int r)
     }
 }
 
+/*
+    Imprime el laberinto en por consola
+    (standard output)
+*/
 void printMaze(char *maze, const int n)
 {
     for (int i = 0; i < n; i++)
