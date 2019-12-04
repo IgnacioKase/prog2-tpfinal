@@ -20,15 +20,7 @@ from functools import reduce
 
 def __main(args, kargs):
     response = subprocess.check_output(["./a.exe", "in/test1.txt"])
-    print(response)
-
-    maze = '''I 1 0 0 0 0 0
-    0 0 1 0 0 0 0
-    0 1 0 1 1 0 0
-    0 1 0 1 X 1 0
-    0 0 0 0 0 0 0
-    0 0 0 0 0 0 0
-    1 0 0 0 1 0 0'''.split('\n')
+    maze = response.decode('utf-8').strip().split('\n')
 
     graph = [row.split() for row in maze]
 
