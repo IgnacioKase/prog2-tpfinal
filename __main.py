@@ -2,49 +2,32 @@
 # -*- coding: utf-8 -*-
 import subprocess
 from functools import reduce
-
-
-######### FUNCION PRINCIPAL #########
-
-#
-#  __main__
-# @Parametros: args[String], kargs[list]
-# @Salida: String (por consola no retorna la función)
-#
-# Recibe un archivo, y llama a __main.c para generar
-# un laberinto a partir de este, buscará el camino más
-# corto entre el punto 'I' y el punto 'X'. En caso de
-# no existir dicho camino, generará otro laberinto.
-# Retorna el camino mas corto de 'X' a 'I'
-#
-
-def __main(args, kargs):
-    response = subprocess.check_output(["./a.exe", "in/test1.txt"])
-    maze = response.decode('utf-8').strip().split('\n')
-
-    graph = [row.split() for row in maze]
-
-    iniPos = (0, 0)
-    endPos = (0, 0)
-
-    for i, row in enumerate(graph):
-        if 'I' in row:
-            iniPos = (i, row.index('I'))
-        if 'X' in row:
-            endPos = (i, row.index('X'))
-
-    path = BFS(graph, iniPos, endPos)
-
-    if len(path) == 0:
-        pass  # we have to repeat the maze generate process
-    else:
-        output = reduce(lambda x, y: x + y,
-                        map(lambda v: "(%s, %s), " % (v[1] + 1, v[0] + 1), path))
-        output = output.strip()[:-1]
-        print(output)
+import sys
 
 ######### FUNCIONES AUXILIARES #########
 
+
+def generateMaze():
+    PATH_C = sys.argv[1]
+    PATH_IN = sys.argv[2]
+    PATH_MAZE = sys.argv[3]
+
+    response = subprocess.run([PATH_C, PATH_IN, PATH_MAZE])
+
+    if response.returncode != 0:
+        print("Error al generar el laberinto, mas información en:\tlog.txt")
+        return []
+
+    fMaze = open(PATH_MAZE, "r", encoding="utf-8")
+
+    graph = []
+
+    line = fMaze.readline()
+    while line:
+        graph.append(line.split())
+        line = fMaze.readline()
+    return graph
+#########################################
 
 #
 # checkBoundaries:
@@ -55,6 +38,7 @@ def __main(args, kargs):
 # y checkea que esten contenidas entre 0
 # y n, [0,n).
 #
+
 
 def checkBoundaries(vertex, n):
     return vertex[0] >= 0 and vertex[1] >= 0 and vertex[0] < n and vertex[1] < n
@@ -145,4 +129,45 @@ def test_BFS():
 #########################################
 
 
-__main(False, False)
+######### FUNCION PRINCIPAL #########
+
+#
+#  __main__
+# @Parametros: args[String], kargs[list]
+# @Salida: String (por consola no retorna la función)
+#
+# Recibe un archivo, y llama a __main.c para generar
+# un laberinto a partir de este, buscará el camino más
+# corto entre el punto 'I' y el punto 'X'. En caso de
+# no existir dicho camino, generará otro laberinto.
+# Retorna el camino mas corto de 'X' a 'I'
+#
+
+
+def main():
+    solved = False
+    graph = generateMaze()
+    path = []
+    PATH_OUT = sys.argv[4]
+    foutput = open(PATH_OUT, "w+", encoding="utf-8")
+    while !solved and len:
+        iniPos = endPos = (0, 0)
+
+        for i, row in enumerate(graph):
+            if 'I' in row:
+                iniPos = (i, row.index('I'))
+            if 'X' in row:
+                endPos = (i, row.index('X'))
+
+        path = BFS(graph, iniPos, endPos)
+
+        solved = len(path) == 0
+
+    output = reduce(lambda x, y: x + y,
+                    map(lambda v: "(%s, %s), " % (v[1] + 1, v[0] + 1), path))
+    output = output.strip()[:-1]
+    foutput.write(output)
+
+
+if __name__ == "__main__":
+    main()

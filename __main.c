@@ -16,6 +16,7 @@
 #include <time.h>
 
 #define MAX_STR_LENGTH 200
+#define LOG_FILE "log.txt"
 
 /*
     Estructura utilizada para representar
@@ -39,7 +40,8 @@ int getPair(char *str, struct pair *p);
 int insertInMaze(char *maze, int n, struct pair *p, char value);
 int insertPair(char *str, char value, char *maze, int n);
 void generateRandoms(char *maze, const int n, int r);
-void printMaze(char *maze, const int n);
+void printMaze(FILE *f, char *maze, const int n);
+void printError(char *str);
 
 int main(int argc, char *argv[])
 {
@@ -47,14 +49,16 @@ int main(int argc, char *argv[])
     if (checkInput(argc) != 0)
         return -1;
     char *PATH_IN = argv[1];
+    char *PATH_OUT = argv[2];
 
     //Abrimos el archivo
     FILE *fIn = fopen(PATH_IN, "r");
+    FILE *fOut = fopen(PATH_OUT, "w");
 
     //Si no se puede abrir el archivo, cortamos la ejecución
-    if (fIn == NULL)
+    if (fIn == NULL || fOut == NULL)
     {
-        printf("Error al abrir el archivo");
+        printError("Error al abrir el archivo");
         return -1;
     }
     ///////////////////////////////////////////////////
@@ -75,7 +79,7 @@ int main(int argc, char *argv[])
     maze = (char *)malloc(dimension * dimension * sizeof(char));
     if (maze == NULL)
     {
-        printf("Memoria insuficiente para este laberinto.\n");
+        printError("Memoria insuficiente para este laberinto.\n");
         return -1;
     }
     for (int i = 0; i < dimension; i++)
@@ -102,7 +106,7 @@ int main(int argc, char *argv[])
     generateRandoms(maze, dimension, nRandoms);
 
     //Imprime el laberinto
-    printMaze(maze, dimension);
+    printMaze(fOut, maze, dimension);
 
     free(maze);
     fclose(fIn);
@@ -187,15 +191,16 @@ void trim(char *str, const char *seps)
 int checkInput(int argc)
 {
     //Checkeamos recibir los parametros correctamente
-    if (argc != 2)
+    if (argc != 3)
     {
-        printf("---------------------------------------\n\n");
-        printf("Error, ingrese el path del archivo:\n\n");
-        printf("1 - Archivo de entrada\n\n");
-        printf("Ejemplo:\n\n");
-        printf("$ gcc __main.c\n");
-        printf("$ fileName in/test1.txt\n\n");
-        printf("---------------------------------------\n");
+        char output[410] = "\n---------------------------------------\n\n";
+        strcat(output, "Error, ingrese el path del archivo:\n\n");
+        strcat(output, "1 - Archivo de entrada\n\n");
+        strcat(output, "Ejemplo:\n\n");
+        strcat(output, "$ gcc __main.c\n");
+        strcat(output, "$ fileName in/test1.txt maze/maze1.txt\n\n");
+        strcat(output, "---------------------------------------\n");
+        printError(output);
         return -1;
     }
     return 0;
@@ -234,7 +239,7 @@ int checkLine(FILE *f, char *str)
         trim(buffer, NULL);
         if (strcmp(buffer, str) != 0)
         {
-            printf("Error en el formato de entrada");
+            printError("Error en el formato de entrada");
             return -1;
         }
     }
@@ -264,7 +269,7 @@ int getWalls(FILE *f, char *maze, const int n)
             {
                 flag = insertPair(buffer, '1', maze, n);
                 if (flag == -1)
-                    printf("Error, coordenadas invalidas.");
+                    printError("Error, coordenadas invalidas.");
             }
             else
             {
@@ -292,7 +297,7 @@ int getObjectives(FILE *f, char *maze, const int dimension)
     fgets(buffer, MAX_STR_LENGTH - 1, f);
     if (insertPair(buffer, 'I', maze, dimension) == -1)
     {
-        printf("Error, coordenadas invalidas.\n");
+        printError("Error, coordenadas invalidas.\n");
         return -1;
     }
 
@@ -304,7 +309,7 @@ int getObjectives(FILE *f, char *maze, const int dimension)
     fgets(buffer, MAX_STR_LENGTH - 1, f);
     if (insertPair(buffer, 'X', maze, dimension) == -1)
     {
-        printf("Error, coordenadas invalidas.\n");
+        printError("Error, coordenadas invalidas.\n");
         return -1;
     }
     ///////////////////////////////////////////////////
@@ -406,12 +411,19 @@ void generateRandoms(char *maze, const int n, int r)
     Imprime el laberinto en por consola
     (standard output)
 */
-void printMaze(char *maze, const int n)
+void printMaze(FILE *f, char *maze, const int n)
 {
     for (int i = 0; i < n; i++)
     {
         for (int j = 0; j < n; j++)
-            printf("%c ", *(maze + (i * n + j)));
-        printf("\n");
+            fprintf(f, "%c ", *(maze + (i * n + j)));
+        fprintf(f, "\n");
     }
+}
+
+void printError(char *str)
+{
+    FILE *f = fopen(LOG_FILE, "a+");
+    fprintf(f, "%ld\t%s", time(0), str);
+    fclose(f);
 }
