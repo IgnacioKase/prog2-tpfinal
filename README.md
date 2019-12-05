@@ -50,6 +50,10 @@ O especificando la versión,
 
 \$ python3 fileName arg1 arg2 arg3 arg4
 
+Ejemplo:
+
+\$ python .\__main.py .\a.exe .\in\test1.txt .\maze\maze1.txt .\out\test1.txt
+
 # Argumentos
 
 - arg1 = Path al programa compilado de C
