@@ -10,6 +10,10 @@
  28/11/2019
 */
 
+/*
+ LEER README.md
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

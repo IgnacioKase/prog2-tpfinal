@@ -18,6 +18,10 @@ from ast import literal_eval as make_tuple
 # 28/11/2019
 #
 
+#####################################
+# LEER README.md
+#####################################
+
 ######### FUNCION PRINCIPAL #########
 
 #
