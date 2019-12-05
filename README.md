@@ -52,7 +52,7 @@ O especificando la versión,
 
 Ejemplo:
 
-\$ python .\__main.py .\a.exe .\in\test1.txt .\maze\maze1.txt .\out\test1.txt
+\$ python .\\__main.py .\a.exe .\\in\\test1.txt .\\maze\\maze1.txt .\\out\\test1.txt
 
 # Argumentos
 
