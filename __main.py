@@ -3,9 +3,65 @@
 import subprocess
 from functools import reduce
 import sys
+from ast import literal_eval as make_tuple
+
+
+#
+# TRABAJO PRÁCTICO FINAL
+# GENERACION/SOLUCION Laberinto C/Python
+#
+# ALUMNO:
+#       - KASEVICH, IGNACIO
+#
+# GIT: https://github.com/IgnacioKase/prog2-tpfinal
+#
+# 28/11/2019
+#
+
+######### FUNCION PRINCIPAL #########
+
+#
+#  __main__
+# @Parametros: args[String], kargs[list]
+# @Salida: String (por consola no retorna la función)
+#
+# Recibe un archivo, y llama a __main.c para generar
+# un laberinto a partir de este, buscará el camino más
+# corto entre el punto 'I' y el punto 'X'. En caso de
+# no existir dicho camino, generará otro laberinto.
+# Retorna el camino mas corto de 'X' a 'I'
+#
+
+def main():
+    graph, iniPos, endPos = generateMaze()
+    path = []
+    PATH_OUT = sys.argv[4]
+    foutput = open(PATH_OUT, "w+", encoding="utf-8")
+    solved = False
+    while not solved and len(graph) > 0:
+        path = BFS(graph, iniPos, endPos)
+        solved = len(path) > 0
+        if not solved:
+            graph, iniPos, endPos = generateMaze()
+
+    output = reduce(lambda x, y: x + y,
+                    map(lambda v: "(%s, %s), " % (v[1] + 1, v[0] + 1), path)).strip()[:-1]
+    foutput.write(output)
+
 
 ######### FUNCIONES AUXILIARES #########
 
+#
+# generateMaze:
+# @Parametros: -
+# @Salida: tuple(graph[List[string]], pair/tuple, pair/tuple)
+#
+# Ejecuta el programa en C que genera el laberinto
+# y luego lee el archivo de salida del mismo. Y
+# arma el grafo correspondiente (lista de strings)
+# e identifica la posicion de inicio y de llegada
+# en el mismo.
+#
 
 def generateMaze():
     PATH_C = sys.argv[1]
@@ -18,16 +74,60 @@ def generateMaze():
         print("Error al generar el laberinto, mas información en:\tlog.txt")
         return []
 
+    iniPos = endPos = (0, 0)
+    iniFound = False
+    endFound = False
+    graph = []
+    i = 0
+
     fMaze = open(PATH_MAZE, "r", encoding="utf-8")
 
-    graph = []
-
     line = fMaze.readline()
+
     while line:
-        graph.append(line.split())
+        graph.append(line.strip())
+        if not iniFound:
+            if 'I' in graph[-1]:
+                iniPos = (i, int(graph[-1].index('I') / 2))
+                iniFound = True
+        if not endFound:
+            if 'X' in graph[-1]:
+                endPos = (i, int(graph[-1].index('X')/2))
+                endFound = True
+        i += 1
         line = fMaze.readline()
-    return graph
+    fMaze.close()
+    return (graph, iniPos, endPos)
 #########################################
+
+
+#
+# getTest:
+# @Parametros: filePath[string]
+# @Salida: List[pair/tuple]
+#
+# Toma la ruta de un archivo y lee los casos de
+# test en ellos siendo el formato:
+# -Primera linea input
+# -Segunda linea output esperado
+# Es decir que el archivo deberá tener una cantidad
+# de lineas pares.
+#
+
+def getTest(filePath):
+    file = open(filePath, "r", encoding="utf-8")
+    line1 = file.readline()
+    line2 = file.readline()
+    tests = [(line1.strip(), line2.strip())]
+    while line1 and line2:
+        line1 = file.readline()
+        line2 = file.readline()
+        if line1 and line2:
+            tests.append((line1.strip(), line2.strip()))
+    file.close()
+    return tests
+#########################################
+
 
 #
 # checkBoundaries:
@@ -39,19 +139,18 @@ def generateMaze():
 # y n, [0,n).
 #
 
-
 def checkBoundaries(vertex, n):
     return vertex[0] >= 0 and vertex[1] >= 0 and vertex[0] < n and vertex[1] < n
 
 
 def test_checkBoundaries():
-    f = open("test/checkBoundaries.txt", "r")
-    line = f.readline()
-    while line:
-        vertex, n = line.split()
-        vertex = tuple(vertex)
-        assert checkBoundaries(
-            (int(vertex[0]), int(vertex[1])), int(n)) == bool(f.readline())
+    tests = getTest("test/checkBoundaries.txt")
+    for test in tests:
+        in_test = test[0].split()
+        vertex = make_tuple(in_test[0])
+        n = int(in_test[1])
+        out = test[1] == 'True'
+        assert checkBoundaries(vertex, n) == out
 #########################################
 
 
@@ -79,7 +178,15 @@ def getNeighbors(vertex, n):
 
 
 def test_getNeighbors():
-    assert checkBoundaries((1, 2), 3) == True
+    tests = getTest("test/getNeighbors.txt")
+    for test in tests:
+        in_test = test[0].split()
+        vertex = make_tuple(in_test[0])
+        n = int(in_test[1])
+        out = test[1][1:-1].split(';')
+        neighbors = set([make_tuple(v) for v in out])
+        response = set(getNeighbors(vertex, n))
+        assert neighbors == response
 #########################################
 
 
@@ -105,13 +212,15 @@ def BFS(graph, vertex, end):
     parent = [[(-1, -1)] * n for i in range(n)]
     queue = []
     queue.append(vertex)
+    found = False
     visited[vertex[0]][vertex[1]] = True
-    while queue:
+    while queue and not found:
         v = queue.pop(0)
         neighbors = getNeighbors(v, n)
         for u in neighbors:
             if visited[u[0]][u[1]] == False and graph[u[0]][u[1]] != '1':
                 queue.append(u)
+                found = graph[u[0]][u[1]] == 'X' or found
                 parent[u[0]][u[1]] = v
                 visited[u[0]][u[1]] = True
 
@@ -120,53 +229,27 @@ def BFS(graph, vertex, end):
     while v != (-1, -1):
         output.append(v)
         v = parent[v[0]][v[1]]
-
+    output.reverse()
+    if len(output) > 0:
+        output.append(end)
     return output
 
 
 def test_BFS():
-    assert checkBoundaries((1, 2), 3) == True
+    tests = getTest("test/BFS.txt")
+    for test in tests:
+        in_test = test[0].split()
+        graph = in_test[0][1:-1].split(';')
+        iniPos = make_tuple(in_test[1])
+        endPos = make_tuple(in_test[2])
+        out = []
+        if test[1] != "[]":
+            out = test[1][1:-1].split(';')
+        path = []
+        path = [make_tuple(v) for v in out]
+
+        assert BFS(graph, iniPos, endPos) == path
 #########################################
-
-
-######### FUNCION PRINCIPAL #########
-
-#
-#  __main__
-# @Parametros: args[String], kargs[list]
-# @Salida: String (por consola no retorna la función)
-#
-# Recibe un archivo, y llama a __main.c para generar
-# un laberinto a partir de este, buscará el camino más
-# corto entre el punto 'I' y el punto 'X'. En caso de
-# no existir dicho camino, generará otro laberinto.
-# Retorna el camino mas corto de 'X' a 'I'
-#
-
-
-def main():
-    solved = False
-    graph = generateMaze()
-    path = []
-    PATH_OUT = sys.argv[4]
-    foutput = open(PATH_OUT, "w+", encoding="utf-8")
-    while !solved and len:
-        iniPos = endPos = (0, 0)
-
-        for i, row in enumerate(graph):
-            if 'I' in row:
-                iniPos = (i, row.index('I'))
-            if 'X' in row:
-                endPos = (i, row.index('X'))
-
-        path = BFS(graph, iniPos, endPos)
-
-        solved = len(path) == 0
-
-    output = reduce(lambda x, y: x + y,
-                    map(lambda v: "(%s, %s), " % (v[1] + 1, v[0] + 1), path))
-    output = output.strip()[:-1]
-    foutput.write(output)
 
 
 if __name__ == "__main__":

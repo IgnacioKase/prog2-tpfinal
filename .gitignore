@@ -157,3 +157,5 @@ Mkfile.old
 dkms.conf
 
 log.txt
+/out/*
+/maze/*

@@ -2,7 +2,7 @@
  TRABAJO PRÁCTICO FINAL
  GENERACION/SOLUCION Laberinto C/Python
 
- INTEGRANTES:
+ ALUMNO:
        - KASEVICH, IGNACIO
 
  GIT: https://github.com/IgnacioKase/prog2-tpfinal
